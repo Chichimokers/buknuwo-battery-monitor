@@ -109,18 +109,30 @@ El directorio `local.properties` debe contener `sdk.dir=E\:\\Android_SDK` (o la 
 Si el wrapper no puede descargar la distribución, hay una copia local de Gradle 8.9 en
 `.gradle-dist/gradle-8.9/bin/gradle.bat` y se puede invocar directamente con `-p <ruta del proyecto>`.
 
+## Generador de informes de soporte (v1.1.0)
+
+La pantalla **Diagnóstico BLE → Informe para soporte** permite al usuario:
+
+1. Seguir una guía rápida: activar Bluetooth, conceder permisos, escanear, seleccionar la batería y esperar 30 s.
+2. Escribir qué hizo y qué falló.
+3. Pulsar **Generar y compartir informe .log**. La app crea `buknuwo_report_yyyyMMdd_HHmmss.log` en `filesDir/reports/` y abre la hoja de compartir de Android con **WhatsApp como primera opción** (si está instalado; si no, cualquier otra app).
+
+El informe incluye: versión de app y dispositivo, estado de cada permiso, estado del adaptador/GATT, último error, configuración BLE, telemetría real (o `SIN DATOS`), comentario del usuario, últimos eventos de alertas, registro BLE en memoria y las últimas líneas del registro persistente. El registro persistente (`files/logs/buknuwo_ble.log`, máx. 512 KB) también captura excepciones no controladas, por lo que se puede exportar incluso después de un crash. El archivo se comparte mediante `FileProvider` con URI temporal y permiso de lectura; la app no solicita permisos de almacenamiento.
+
 ## APK firmado listo para compartir
 
 | Dato | Valor |
 |---|---|
-| Ruta para enviar | `D:\Proyectos\Bateria\BuknuwoBatteryMonitor-release-signed.apk` |
+| Ruta para enviar | `D:\Proyectos\Bateria\BuknuwoBatteryMonitor-v1.1.0-release-signed.apk` |
 | Ruta original del build | `app/build/outputs/apk/release/app-release.apk` |
 | Package | `com.buknuwo.battery` |
-| Versión | 1.0.0 (versionCode 1) |
-| Tamaño | 1 974 222 bytes (~1.9 MB) |
+| Versión | 1.1.0 (versionCode 2) |
+| Tamaño | 1 974 894 bytes (~1.9 MB) |
 | Firma | v2 (APK Signature Scheme v2), RSA 2048 |
 | Certificado | CN=Buknuwo Battery Monitor, OU=Development, O=Buknuwo, C=ES |
-| SHA-256 del APK | `1BF2281433D3EDA2D675ACE740241C5C85F326361053FAB08EB6008C69D20ED0` |
+| SHA-256 del APK | `5678CEED28D34EA1785730F890AC58152F2F0AE5983754EEB3197E5ED9B26796` |
+
+La v1.0.0 sigue disponible en el release de GitHub; no incluía el generador de informes.
 
 La keystore **no se incluye en el repositorio público** (`.gitignore` excluye `*.keystore`, `*.jks`, `local.properties` y `*.apk`). Para generar tu propia firma:
 

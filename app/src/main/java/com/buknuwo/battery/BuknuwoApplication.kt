@@ -9,6 +9,7 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.buknuwo.battery.alerts.AlertRuleRepository
+import com.buknuwo.battery.diagnostics.BleDiagnostics
 import com.buknuwo.battery.diagnostics.CleanupWorker
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -23,6 +24,7 @@ class BuknuwoApplication : Application(), Configuration.Provider {
 
     @Inject lateinit var workerFactory: HiltWorkerFactory
     @Inject lateinit var ruleRepository: AlertRuleRepository
+    @Inject lateinit var diagnostics: BleDiagnostics
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -31,6 +33,7 @@ class BuknuwoApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        installCrashLogger()
         appScope.launch { runCatching { ruleRepository.seedExamplesIfEmpty() } }
         val request = PeriodicWorkRequestBuilder<CleanupWorker>(1, TimeUnit.DAYS)
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.NOT_REQUIRED).build())
@@ -38,5 +41,14 @@ class BuknuwoApplication : Application(), Configuration.Provider {
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             CleanupWorker.UNIQUE_NAME, ExistingPeriodicWorkPolicy.KEEP, request
         )
+    }
+
+    /** Keeps stack traces in the persistent log so they can be exported after a crash. */
+    private fun installCrashLogger() {
+        val previous = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            runCatching { diagnostics.recordCrash(thread.name, throwable) }
+            previous?.uncaughtException(thread, throwable)
+        }
     }
 }

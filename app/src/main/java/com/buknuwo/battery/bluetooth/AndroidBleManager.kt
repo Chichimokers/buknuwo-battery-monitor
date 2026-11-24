@@ -87,6 +87,7 @@ class AndroidBleManager @Inject constructor(
     @Volatile private var scanning = false
     @Volatile private var released = false
     @Volatile private var targetAddress: String? = null
+    @Volatile private var targetFoundLogged = false
 
     init {
         scope.launch {
@@ -118,6 +119,13 @@ class AndroidBleManager @Inject constructor(
             _devices.value = (_devices.value.filterNot { it.address == address } + info)
                 .sortedByDescending { it.rssi }
                 .take(40)
+            if (info.isTarget && !targetFoundLogged) {
+                targetFoundLogged = true
+                diagnostics.log(
+                    BleDiagnostics.Level.INFO, "SCAN",
+                    "Dispositivo objetivo encontrado: $name ($address, ${result.rssi} dBm)"
+                )
+            }
         }
 
         override fun onScanFailed(errorCode: Int) {
@@ -145,7 +153,13 @@ class AndroidBleManager @Inject constructor(
         }
         if (scanning) return
         _devices.value = emptyList()
+        targetFoundLogged = false
         setError(null)
+        diagnostics.log(
+            BleDiagnostics.Level.INFO, "SCAN",
+            "Escaneo iniciado. Permisos BLE=${BluetoothPermissions.hasBlePermissions(context)}, " +
+                "Bluetooth=${adapter?.isEnabled == true}, objetivo=${targetAddress ?: TARGET_NAME}"
+        )
         try {
             scanner.startScan(
                 null,

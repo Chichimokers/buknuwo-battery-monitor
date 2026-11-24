@@ -13,6 +13,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -33,6 +34,8 @@ fun DiagnosticsScreen(viewModel: DiagnosticsViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsState()
     val error by viewModel.error.collectAsState()
     val probe by viewModel.probeResult.collectAsState()
+    val note by viewModel.userNote.collectAsState()
+    val reportStatus by viewModel.reportStatus.collectAsState()
 
     Column(Modifier.fillMaxSize().padding(16.dp)) {
         Text("Estado GATT: ${state.name}", style = MaterialTheme.typography.titleMedium)
@@ -49,6 +52,28 @@ fun DiagnosticsScreen(viewModel: DiagnosticsViewModel = hiltViewModel()) {
         )
         Button(onClick = viewModel::probeRxRead, Modifier.fillMaxWidth()) { Text("Probar lectura RX") }
         if (probe != null) Text(probe!!, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 6.dp))
+
+        SectionTitle("Informe para soporte (.log)")
+        Text(
+            "Si la batería no se enlaza: activa el Bluetooth, acepta los permisos, escanea y selecciona " +
+                "la batería desde «Batería BLE», espera 30 segundos y vuelve aquí. Cuenta qué hiciste " +
+                "y comparte el informe por WhatsApp. El archivo incluye permisos, estado GATT, " +
+                "configuración, telemetría recibida y todos los registros BLE.",
+            style = MaterialTheme.typography.bodyMedium
+        )
+        OutlinedTextField(
+            value = note,
+            onValueChange = viewModel::setUserNote,
+            label = { Text("¿Qué hiciste y qué falló? (opcional)") },
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            minLines = 3
+        )
+        Button(onClick = viewModel::shareReport, Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            Text("Generar y compartir informe .log")
+        }
+        if (reportStatus != null) {
+            Text(reportStatus!!, color = com.buknuwo.battery.ui.theme.Accent, style = MaterialTheme.typography.bodyMedium)
+        }
 
         SectionTitle("Registro BLE (${entries.size})")
         OutlinedButton(onClick = viewModel::clearLogs, Modifier.fillMaxWidth()) { Text("Limpiar registro") }
