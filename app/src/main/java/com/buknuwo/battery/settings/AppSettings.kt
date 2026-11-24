@@ -7,7 +7,7 @@ data class AppSettings(
     val targetName: String? = null,
     val autoStartOnBoot: Boolean = false,
     val pollIntervalMs: Long = 1_500L,
-    val requestTimeoutMs: Long = 1_500L,
+    val requestTimeoutMs: Long = 2_000L,
     val reconnectEnabled: Boolean = true,
     val maxReconnectAttempts: Int = 8,
     val watchdogTimeoutMs: Long = 12_000L,

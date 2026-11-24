@@ -84,7 +84,7 @@ class NotificationHelper @Inject constructor(
         val condition = rule.allConditions().firstOrNull()
         val variable = condition?.variableId?.let { catalog.get(it) }
         val formattedValue = when {
-            value == null -> "SIN DATOS"
+            value == null || value >= 1_000_000 -> "SIN DATOS"
             variable != null -> "${"%.3f".format(value)} ${variable.unit}".trim()
             else -> "%.3f".format(value)
         }

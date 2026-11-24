@@ -109,6 +109,10 @@ El directorio `local.properties` debe contener `sdk.dir=E\:\\Android_SDK` (o la 
 Si el wrapper no puede descargar la distribución, hay una copia local de Gradle 8.9 en
 `.gradle-dist/gradle-8.9/bin/gradle.bat` y se puede invocar directamente con `-p <ruta del proyecto>`.
 
+## Corrección v1.1.1
+
+Se corregió un fallo detectado gracias a un informe real: `connectGatt` y el descubrimiento de servicios funcionaban, pero el `CompletableDeferred` que espera `connect()` **no se completaba al recibir `STATE_CONNECTED`**. La app esperaba 15 s, daba `Timeout durante la conexión/descubrimiento GATT` y cerraba el GATT antes de escribir el CCCD, por lo que nunca se activaban las notificaciones RX. Ahora el callback completa el deferred inmediatamente, los mensajes de timeout indican la etapa exacta (conexión / descubrimiento / suscripción CCCD) y se avisa cuando la señal del BMS es muy débil (RSSI < -85 dBm).
+
 ## Generador de informes de soporte (v1.1.0)
 
 La pantalla **Diagnóstico BLE → Informe para soporte** permite al usuario:

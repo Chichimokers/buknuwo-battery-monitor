@@ -88,6 +88,7 @@ class AndroidBleManager @Inject constructor(
     @Volatile private var released = false
     @Volatile private var targetAddress: String? = null
     @Volatile private var targetFoundLogged = false
+    @Volatile private var gattStage = "inicio"
 
     init {
         scope.launch {
@@ -125,6 +126,13 @@ class AndroidBleManager @Inject constructor(
                     BleDiagnostics.Level.INFO, "SCAN",
                     "Dispositivo objetivo encontrado: $name ($address, ${result.rssi} dBm)"
                 )
+                if (result.rssi < -85) {
+                    diagnostics.log(
+                        BleDiagnostics.Level.WARN, "SCAN",
+                        "Señal BLE muy débil (${result.rssi} dBm). Acerque la batería al teléfono " +
+                            "(1-2 m, sin paredes metálicas) antes de conectar."
+                    )
+                }
             }
         }
 
@@ -221,6 +229,7 @@ class AndroidBleManager @Inject constructor(
 
     private suspend fun connectLocked(device: BleDeviceInfo): Result<Unit> {
         _connectionState.value = ConnectionState.CONNECTING
+        gattStage = "conexión GATT"
         setError(null)
         val remote: BluetoothDevice = try {
             adapter?.getRemoteDevice(device.address)
@@ -243,6 +252,7 @@ class AndroidBleManager @Inject constructor(
             val connected = withTimeout(CONNECT_TIMEOUT_MS) { connDeferred.await() }
             connected.getOrThrow()
 
+            gattStage = "descubrimiento de servicios"
             _connectionState.value = ConnectionState.DISCOVERING_SERVICES
             val discovered = withTimeout(CONNECT_TIMEOUT_MS) { svcDeferred.await() }
             discovered.getOrThrow()
@@ -250,14 +260,16 @@ class AndroidBleManager @Inject constructor(
             if (rxCharacteristic == null || txCharacteristic == null || cccd == null) {
                 return Result.failure(IllegalStateException("Servicio/características GATT no encontrados"))
             }
+            gattStage = "suscripción CCCD"
             // connectLocked is already inside gattMutex: use the non-locking variant
             // to avoid a deadlock on Kotlin's non-reentrant Mutex.
             val subscribed = subscribeNotificationsUnlocked()
             subscribed.getOrThrow()
+            gattStage = "listo"
             _connectionState.value = ConnectionState.CONNECTED
             Result.success(Unit)
         } catch (timeout: TimeoutCancellationException) {
-            val message = "Timeout durante la conexión/descubrimiento GATT"
+            val message = "Timeout en etapa: $gattStage"
             setError(message)
             diagnostics.error("GATT", message)
             releaseConnection()
@@ -368,6 +380,10 @@ class AndroidBleManager @Inject constructor(
                     onDisconnected(status)
                 }
                 newState == BluetoothProfile.STATE_CONNECTED -> {
+                    // CRITICAL: release the coroutine waiting in connectLocked(). Without this,
+                    // connectGatt succeeds and services are discovered but connect() still waits
+                    // 15 s and then disconnects, so notifications are never enabled.
+                    connectionDeferred?.complete(Result.success(Unit))
                     _connectionState.value = ConnectionState.DISCOVERING_SERVICES
                     diagnostics.log(BleDiagnostics.Level.INFO, "GATT", "Conectado; descubriendo servicios")
                     scope.launch {

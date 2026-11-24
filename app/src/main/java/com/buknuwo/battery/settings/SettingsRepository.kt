@@ -52,7 +52,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
                 targetName = prefs[Keys.TARGET_NAME],
                 autoStartOnBoot = prefs[Keys.AUTO_START] ?: false,
                 pollIntervalMs = prefs[Keys.POLL_INTERVAL] ?: 1_500L,
-                requestTimeoutMs = prefs[Keys.REQUEST_TIMEOUT] ?: 1_500L,
+                requestTimeoutMs = prefs[Keys.REQUEST_TIMEOUT] ?: 2_000L,
                 reconnectEnabled = prefs[Keys.RECONNECT] ?: true,
                 maxReconnectAttempts = prefs[Keys.MAX_RECONNECT] ?: 8,
                 watchdogTimeoutMs = prefs[Keys.WATCHDOG] ?: 12_000L,

@@ -164,7 +164,11 @@ class AlertManager @Inject constructor(
                 ruleName = rule.name,
                 eventType = type,
                 timestampMs = now,
-                valueText = value?.let { "%.3f".format(Locale.US, it) } ?: "SIN DATOS",
+                valueText = when {
+                    value == null -> "SIN DATOS"
+                    value >= 1_000_000 -> "SIN DATOS" // seconds_since_data sentinel when no frame ever arrived
+                    else -> "%.3f".format(Locale.US, value)
+                },
                 thresholdText = condition?.value?.let { "%.3f".format(Locale.US, it) } ?: "—",
                 priority = rule.priority.name,
                 snapshotSummary = "V=${snapshot.voltageV?.let { "%.2f".format(it) } ?: "—"} V " +
