@@ -59,6 +59,23 @@ class AlertEditorViewModel @Inject constructor(
     private val _saved = Channel<Unit>(Channel.BUFFERED)
     val saved = _saved.receiveAsFlow()
 
+    /** Plain-language summary of what the rule currently does. */
+    val summary: StateFlow<String> = _rule.map { rule ->
+        val condition = rule.allConditions().firstOrNull()
+        if (condition == null) {
+            "Esta regla todavía no tiene condiciones. Añade una para que pueda evaluarse."
+        } else {
+            val variable = catalog.get(condition.variableId)?.label ?: condition.variableId
+            val unit = catalog.get(condition.variableId)?.unit ?: ""
+            val threshold = condition.value?.let { "%.3f".format(it) } ?: "—"
+            val duration = if (condition.durationMs > 0) " durante ${condition.durationMs / 1000} s" else ""
+            val logic = (rule.root as? ConditionNode.Group)?.logic?.name ?: ""
+            val extra = if (rule.allConditions().size > 1) " (${rule.allConditions().size} condiciones, $logic)" else ""
+            "Cuando «$variable» ${condition.operator.label.lowercase()} $threshold $unit$duration$extra " +
+                "→ aviso de prioridad ${rule.priority.name}."
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+
     init {
         if (ruleId != null) {
             viewModelScope.launch { repository.get(ruleId)?.let { _rule.value = it } }
@@ -79,6 +96,46 @@ class AlertEditorViewModel @Inject constructor(
     private fun newLeaf() = ConditionNode.Leaf(
         AlertCondition(UUID.randomUUID().toString(), "soc", ComparisonOperator.LESS_THAN, 20.0)
     )
+
+    /** Safe, editable starting points. They are examples, not manufacturer limits. */
+    fun applyTemplate(template: String) {
+        val (name, description, condition, priority, persistent) = when (template) {
+            "soc" -> Quad(
+                "Batería baja", "Ejemplo editable: SOC por debajo del 20 %.",
+                AlertCondition(UUID.randomUUID().toString(), "soc", ComparisonOperator.LESS_THAN, 20.0),
+                Priority.HIGH, false
+            )
+            "temp" -> Quad(
+                "Temperatura MOSFET alta", "Ejemplo editable: > 65 °C durante 5 s.",
+                AlertCondition(UUID.randomUUID().toString(), "mosfet_temp", ComparisonOperator.GREATER_THAN, 65.0, durationMs = 5_000),
+                Priority.CRITICAL, true
+            )
+            "cell" -> Quad(
+                "Celdas desequilibradas", "Ejemplo editable: diferencia > 0.050 V durante 10 s.",
+                AlertCondition(UUID.randomUUID().toString(), "cell_delta_v", ComparisonOperator.GREATER_THAN, 0.050, durationMs = 10_000),
+                Priority.HIGH, false
+            )
+            "nodata" -> Quad(
+                "Sin telemetría", "Ejemplo editable: sin datos durante 10 s.",
+                AlertCondition(UUID.randomUUID().toString(), "seconds_since_data", ComparisonOperator.NO_DATA_FOR, 10.0),
+                Priority.CRITICAL, true
+            )
+            else -> Quad(
+                "Nueva alerta", "", AlertCondition(UUID.randomUUID().toString(), "soc", ComparisonOperator.LESS_THAN, 20.0),
+                Priority.NORMAL, false
+            )
+        }
+        _rule.value = AlertRule(
+            id = UUID.randomUUID().toString(),
+            name = name,
+            description = description,
+            priority = priority,
+            root = ConditionNode.Group(UUID.randomUUID().toString(), Logic.AND, listOf(ConditionNode.Leaf(condition))),
+            notificationPersistent = persistent
+        )
+    }
+
+    private data class Quad<A, B, C, D, E>(val first: A, val second: B, val third: C, val fourth: D, val fifth: E)
 
     private fun modify(transform: (AlertRule) -> AlertRule) {
         _rule.value = transform(_rule.value).copy(updatedAt = System.currentTimeMillis())

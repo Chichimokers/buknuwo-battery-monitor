@@ -109,6 +109,12 @@ El directorio `local.properties` debe contener `sdk.dir=E\:\\Android_SDK` (o la 
 Si el wrapper no puede descargar la distribución, hay una copia local de Gradle 8.9 en
 `.gradle-dist/gradle-8.9/bin/gradle.bat` y se puede invocar directamente con `-p <ruta del proyecto>`.
 
+## Mejoras de interfaz v1.2.0
+
+- Dashboard adaptativo con `BoxWithConstraints`: en pantallas estrechas el medidor SOC se reduce a 112 dp, las tarjetas usan igual ancho y las celdas/temperaturas se muestran en cuadrícula de 2 columnas (4 en tabletas). Etiquetas de una sola línea para evitar textos partidos.
+- Editor de alertas reorganizado en pasos numerados con descripciones sencillas: plantillas iniciales, resumen en lenguaje natural («Cuando SOC baja de 20 % → aviso de prioridad ALTA»), secciones «Qué vigilar / Cómo avisar / Horario» y opciones avanzadas plegables.
+- Botones con textos claros («TODAS (AND)», «ALGUNA (OR)», «Debe cumplirse durante…») en lugar de términos técnicos aislados.
+
 ## Corrección v1.1.1
 
 Se corregió un fallo detectado gracias a un informe real: `connectGatt` y el descubrimiento de servicios funcionaban, pero el `CompletableDeferred` que espera `connect()` **no se completaba al recibir `STATE_CONNECTED`**. La app esperaba 15 s, daba `Timeout durante la conexión/descubrimiento GATT` y cerraba el GATT antes de escribir el CCCD, por lo que nunca se activaban las notificaciones RX. Ahora el callback completa el deferred inmediatamente, los mensajes de timeout indican la etapa exacta (conexión / descubrimiento / suscripción CCCD) y se avisa cuando la señal del BMS es muy débil (RSSI < -85 dBm).

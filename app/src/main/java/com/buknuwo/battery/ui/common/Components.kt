@@ -67,22 +67,67 @@ fun MetricCard(
     value: String,
     modifier: Modifier = Modifier,
     accent: Color = Accent,
-    subtitle: String? = null
+    subtitle: String? = null,
+    compact: Boolean = false
 ) {
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Text(label, style = MaterialTheme.typography.labelSmall)
+        Column(Modifier.padding(if (compact) 10.dp else 14.dp)) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
             Text(
                 value,
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                style = if (compact) MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                else MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = if (value == "SIN DATOS") TextSecondary else accent,
-                modifier = Modifier.padding(top = 4.dp)
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 2.dp)
             )
-            if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.labelSmall)
+            if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+        }
+    }
+}
+
+/** Equal-width, wrapping grid of metric cards. Use `columns` from window width. */
+@Composable
+fun MetricGrid(items: List<Triple<String, String, Color>>, columns: Int, compact: Boolean = true) {
+    items.chunked(columns).forEach { row ->
+        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            row.forEach { (label, value, color) ->
+                MetricCard(label, value, Modifier.weight(1f), accent = color, compact = compact)
+            }
+        }
+    }
+}
+
+/** Two-column key/value grid used for cells and temperatures. */
+@Composable
+fun DataGrid(title: String, rows: List<Pair<String, String>>, columns: Int) {
+    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+        Column(Modifier.padding(12.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            rows.chunked(columns).forEach { chunk ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    chunk.forEach { (key, value) ->
+                        Row(
+                            Modifier.weight(1f).padding(vertical = 2.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(key, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+                            Text(value, style = MaterialTheme.typography.labelSmall, color = Accent, maxLines = 1)
+                        }
+                    }
+                }
+            }
+            if (rows.isEmpty()) Text("SIN DATOS", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
         }
     }
 }
@@ -96,7 +141,7 @@ fun SocGauge(value: Double?, modifier: Modifier = Modifier) {
         value < 50 -> Color(0xFFFFB74D)
         else -> Accent
     }
-    Box(modifier.size(150.dp), contentAlignment = Alignment.Center) {
+    Box(modifier, contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
             val stroke = 14.dp.toPx()
             drawArc(color.copy(alpha = 0.15f), 135f, 270f, false, style = Stroke(stroke))
