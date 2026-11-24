@@ -79,6 +79,8 @@ class AlertManager @Inject constructor(
             history = telemetry
         )
         currentRules.forEach { rule ->
+            // Keep a per-rule notification channel in sync with the user's sound selection.
+            notifications.ensureRuleChannel(rule)
             val state = runtime.getOrPut(rule.id) {
                 stateDao.get(rule.id)?.toRuntime() ?: engine.initialState(rule.id)
             }

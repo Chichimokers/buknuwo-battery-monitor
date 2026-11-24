@@ -50,6 +50,10 @@ sealed interface ConditionNode {
 }
 
 enum class SoundType { NONE, SYSTEM_DEFAULT, SYSTEM_ALARM, SYSTEM_NOTIFICATION, CUSTOM_URI }
+
+/** Sound used by the Android notification channel itself (independent of the alarm player). */
+enum class NotificationSoundType { PRIORITY_DEFAULT, SYSTEM_ALARM, CUSTOM }
+
 enum class VibrationPatternKind { NONE, SHORT, LONG, DOUBLE, TRIPLE, CUSTOM }
 
 data class AlertRule(
@@ -72,6 +76,8 @@ data class AlertRule(
     val customVibrationPattern: LongArray? = null,
     val vibrationRepeat: Int = 0,
     val notificationEnabled: Boolean = true,
+    val notificationSoundType: NotificationSoundType = NotificationSoundType.PRIORITY_DEFAULT,
+    val notificationSoundUri: String? = null,
     val notificationPersistent: Boolean = false,
     val showOnLockScreen: Boolean = false,
     val repeatNotification: Boolean = false,

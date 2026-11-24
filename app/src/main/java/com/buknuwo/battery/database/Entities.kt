@@ -24,6 +24,8 @@ data class AlertRuleEntity(
     val customVibrationPattern: String?,
     val vibrationRepeat: Int,
     val notificationEnabled: Boolean,
+    val notificationSoundType: String,
+    val notificationSoundUri: String?,
     val notificationPersistent: Boolean,
     val showOnLockScreen: Boolean,
     val repeatNotification: Boolean,

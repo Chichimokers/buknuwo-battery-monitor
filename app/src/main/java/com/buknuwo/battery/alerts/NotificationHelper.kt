@@ -8,9 +8,11 @@ import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
 import android.os.Build
+import android.provider.Settings
 import androidx.core.app.NotificationCompat
 import com.buknuwo.battery.R
 import com.buknuwo.battery.alerts.model.AlertRule
+import com.buknuwo.battery.alerts.model.NotificationSoundType
 import com.buknuwo.battery.alerts.model.Priority
 import com.buknuwo.battery.bluetooth.ConnectionState
 import com.buknuwo.battery.monitoring.MonitoringService
@@ -21,6 +23,13 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
+
+/** Pure helper: notification channel selection can be unit-tested without Android. */
+fun notificationChannelId(rule: AlertRule): String = when (rule.notificationSoundType) {
+    NotificationSoundType.PRIORITY_DEFAULT -> "buknuwo_alert_${rule.priority.channelSuffix}"
+    NotificationSoundType.SYSTEM_ALARM -> "buknuwo_rule_${rule.id}"
+    NotificationSoundType.CUSTOM -> "buknuwo_rule_${rule.id}"
+}
 
 @Singleton
 class NotificationHelper @Inject constructor(
@@ -38,6 +47,10 @@ class NotificationHelper @Inject constructor(
     private val manager: NotificationManager =
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     private val activeAlertIds = mutableSetOf<Int>()
+    private val appliedRuleSounds = mutableMapOf<String, String?>()
+
+    /** Priority channels are shared; a rule with its own sound gets a dedicated channel. */
+    fun channelIdFor(rule: AlertRule): String = notificationChannelId(rule)
 
     fun createChannels() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -78,8 +91,52 @@ class NotificationHelper @Inject constructor(
         manager.createNotificationChannel(channel)
     }
 
+    /** Creates or updates the per-rule channel when the user changes its notification sound. */
+    fun ensureRuleChannel(rule: AlertRule) {
+        createChannels()
+        if (rule.notificationSoundType == NotificationSoundType.PRIORITY_DEFAULT) return
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+
+        val soundUri = when (rule.notificationSoundType) {
+            NotificationSoundType.SYSTEM_ALARM -> Settings.System.DEFAULT_ALARM_ALERT_URI.toString()
+            NotificationSoundType.CUSTOM -> rule.notificationSoundUri
+            else -> null
+        }
+        val id = channelIdFor(rule)
+        synchronized(appliedRuleSounds) {
+            if (appliedRuleSounds[id] == soundUri && manager.getNotificationChannel(id) != null) return
+            manager.deleteNotificationChannel(id)
+            val importance = when (rule.priority) {
+                Priority.LOW -> NotificationManager.IMPORTANCE_LOW
+                Priority.NORMAL -> NotificationManager.IMPORTANCE_DEFAULT
+                Priority.HIGH -> NotificationManager.IMPORTANCE_HIGH
+                Priority.CRITICAL -> NotificationManager.IMPORTANCE_MAX
+            }
+            val channel = NotificationChannel(id, rule.name, importance).apply {
+                description = "Sonido personalizado de ${rule.name}"
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                enableVibration(rule.priority == Priority.CRITICAL || rule.priority == Priority.HIGH)
+                val uri = soundUri?.let { runCatching { android.net.Uri.parse(it) }.getOrNull() }
+                if (uri != null) {
+                    setSound(
+                        uri,
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build()
+                    )
+                } else {
+                    setSound(null, null)
+                }
+            }
+            manager.createNotificationChannel(channel)
+            appliedRuleSounds[id] = soundUri
+        }
+    }
+
     suspend fun show(rule: AlertRule, snapshot: TelemetrySnapshot, value: Double?, nowMs: Long) {
         createChannels()
+        ensureRuleChannel(rule)
         val prefs = settings.settings.first()
         val condition = rule.allConditions().firstOrNull()
         val variable = condition?.variableId?.let { catalog.get(it) }
@@ -101,7 +158,7 @@ class NotificationHelper @Inject constructor(
             append("Batería: $batteryStatus\n")
             append(java.text.SimpleDateFormat("HH:mm:ss").format(java.util.Date(nowMs)))
         }
-        val channel = "buknuwo_alert_${rule.priority.channelSuffix}"
+        val channel = channelIdFor(rule)
         val visibleOnLock = rule.showOnLockScreen || prefs.showOnLockScreen
         val notification = NotificationCompat.Builder(context, channel)
             .setSmallIcon(R.drawable.ic_stat_alert)

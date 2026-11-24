@@ -12,6 +12,7 @@ import com.buknuwo.battery.alerts.model.AlertRule
 import com.buknuwo.battery.alerts.model.ConditionNode
 import com.buknuwo.battery.alerts.model.ComparisonOperator
 import com.buknuwo.battery.alerts.model.Logic
+import com.buknuwo.battery.alerts.model.NotificationSoundType
 import com.buknuwo.battery.alerts.model.Priority
 import com.buknuwo.battery.alerts.model.SoundType
 import com.buknuwo.battery.alerts.model.VibrationPatternKind
@@ -48,6 +49,7 @@ class AlertListViewModel @Inject constructor(
 @HiltViewModel
 class AlertEditorViewModel @Inject constructor(
     private val repository: AlertRuleRepository,
+    private val alarmController: AlarmController,
     val catalog: TelemetryCatalog,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -164,6 +166,30 @@ class AlertEditorViewModel @Inject constructor(
         it.copy(vibrationPattern = VibrationPatternKind.CUSTOM, customVibrationPattern = pattern)
     }
     fun setNotificationEnabled(value: Boolean) = modify { it.copy(notificationEnabled = value) }
+    fun setNotificationSound(type: NotificationSoundType, uri: String? = null) = modify {
+        it.copy(
+            notificationSoundType = type,
+            notificationSoundUri = if (type == NotificationSoundType.CUSTOM) uri else null
+        )
+    }
+
+    /** Preview uses the same media player as real alarms, without touching telemetry or rules. */
+    fun previewNotificationSound() {
+        val current = _rule.value
+        val preview = when (current.notificationSoundType) {
+            NotificationSoundType.CUSTOM -> current.copy(
+                id = "preview_notification", soundType = SoundType.CUSTOM_URI,
+                soundUri = current.notificationSoundUri, soundDurationMs = 2_000
+            )
+            NotificationSoundType.SYSTEM_ALARM -> current.copy(
+                id = "preview_notification", soundType = SoundType.SYSTEM_ALARM, soundDurationMs = 2_000
+            )
+            NotificationSoundType.PRIORITY_DEFAULT -> current.copy(
+                id = "preview_notification", soundType = SoundType.SYSTEM_NOTIFICATION, soundDurationMs = 2_000
+            )
+        }
+        alarmController.preview(preview)
+    }
     fun setPersistent(value: Boolean) = modify { it.copy(notificationPersistent = value) }
     fun setShowOnLockScreen(value: Boolean) = modify { it.copy(showOnLockScreen = value) }
     fun setRepeatNotification(value: Boolean) = modify { it.copy(repeatNotification = value) }
