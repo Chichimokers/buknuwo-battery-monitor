@@ -11,3 +11,5 @@ captures/
 *.keystore
 *.jks
 *.apk
+config.bat
+node_modules

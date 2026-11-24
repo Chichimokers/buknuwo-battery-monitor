@@ -8,6 +8,7 @@ import com.buknuwo.battery.alerts.model.AlertRule
 import com.buknuwo.battery.alerts.model.ConditionNode
 import com.buknuwo.battery.alerts.model.ComparisonOperator
 import com.buknuwo.battery.alerts.model.Logic
+import com.buknuwo.battery.alerts.model.NotificationSoundType
 import com.buknuwo.battery.alerts.model.Priority
 import com.buknuwo.battery.alerts.model.SoundType
 import com.buknuwo.battery.alerts.model.VibrationPatternKind
@@ -209,6 +210,9 @@ class AlertRuleRepository @Inject constructor(private val dao: AlertRuleDao) {
                 ?.mapNotNull { it.trim().toLongOrNull() }?.toLongArray(),
             vibrationRepeat = entity.vibrationRepeat,
             notificationEnabled = entity.notificationEnabled,
+            notificationSoundType = runCatching { NotificationSoundType.valueOf(entity.notificationSoundType) }
+                .getOrDefault(NotificationSoundType.PRIORITY_DEFAULT),
+            notificationSoundUri = entity.notificationSoundUri,
             notificationPersistent = entity.notificationPersistent,
             showOnLockScreen = entity.showOnLockScreen,
             repeatNotification = entity.repeatNotification,
@@ -244,6 +248,8 @@ class AlertRuleRepository @Inject constructor(private val dao: AlertRuleDao) {
         customVibrationPattern = customVibrationPattern?.joinToString(","),
         vibrationRepeat = vibrationRepeat,
         notificationEnabled = notificationEnabled,
+        notificationSoundType = notificationSoundType.name,
+        notificationSoundUri = notificationSoundUri,
         notificationPersistent = notificationPersistent,
         showOnLockScreen = showOnLockScreen,
         repeatNotification = repeatNotification,

@@ -68,6 +68,15 @@ fun AlertEditorScreen(
             viewModel.setSoundUri(uri.toString())
         }
     }
+    val notificationAudioLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            viewModel.setNotificationSound(
+                com.buknuwo.battery.alerts.model.NotificationSoundType.CUSTOM,
+                uri.toString()
+            )
+        }
+    }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
 
@@ -155,6 +164,31 @@ fun AlertEditorScreen(
 
             Text("Notificación", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
             SwitchRow("Mostrar notificación", rule.notificationEnabled, viewModel::setNotificationEnabled)
+            Text("Sonido de la notificación", style = MaterialTheme.typography.labelSmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                FilterChip(
+                    selected = rule.notificationSoundType == com.buknuwo.battery.alerts.model.NotificationSoundType.PRIORITY_DEFAULT,
+                    onClick = { viewModel.setNotificationSound(com.buknuwo.battery.alerts.model.NotificationSoundType.PRIORITY_DEFAULT) },
+                    label = { Text("Según prioridad") }
+                )
+                FilterChip(
+                    selected = rule.notificationSoundType == com.buknuwo.battery.alerts.model.NotificationSoundType.SYSTEM_ALARM,
+                    onClick = { viewModel.setNotificationSound(com.buknuwo.battery.alerts.model.NotificationSoundType.SYSTEM_ALARM) },
+                    label = { Text("Alarma sistema") }
+                )
+                FilterChip(
+                    selected = rule.notificationSoundType == com.buknuwo.battery.alerts.model.NotificationSoundType.CUSTOM,
+                    onClick = { viewModel.setNotificationSound(com.buknuwo.battery.alerts.model.NotificationSoundType.CUSTOM, rule.notificationSoundUri) },
+                    label = { Text("Personalizado") }
+                )
+            }
+            if (rule.notificationSoundType == com.buknuwo.battery.alerts.model.NotificationSoundType.CUSTOM) {
+                OutlinedButton(onClick = { notificationAudioLauncher.launch(arrayOf("audio/*")) }) {
+                    Text("Elegir audio para la notificación")
+                }
+                Text(rule.notificationSoundUri ?: "Sin archivo seleccionado", style = MaterialTheme.typography.labelSmall)
+            }
+            OutlinedButton(onClick = viewModel::previewNotificationSound) { Text("Probar sonido") }
             SwitchRow("Mantenerla while la condición siga activa", rule.notificationPersistent, viewModel::setPersistent)
             SwitchRow("Mostrar en pantalla de bloqueo", rule.showOnLockScreen, viewModel::setShowOnLockScreen)
             SwitchRow("Repetir aviso cada cierto tiempo", rule.repeatNotification, viewModel::setRepeatNotification)

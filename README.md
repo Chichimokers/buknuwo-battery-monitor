@@ -109,6 +109,16 @@ El directorio `local.properties` debe contener `sdk.dir=E\:\\Android_SDK` (o la 
 Si el wrapper no puede descargar la distribución, hay una copia local de Gradle 8.9 en
 `.gradle-dist/gradle-8.9/bin/gradle.bat` y se puede invocar directamente con `-p <ruta del proyecto>`.
 
+## Sonido de notificación personalizado (v1.3.0)
+
+Cada regla permite elegir **el sonido de su notificación**, independientemente del sonido de la alarma:
+
+- **Según prioridad** (por defecto): usa el canal compartido de la prioridad.
+- **Alarma del sistema**: suena la alarma del sistema en el canal dedicado de la regla.
+- **Personalizado**: el usuario elige un archivo de audio con el selector del sistema (SAF); se conserva el permiso de lectura de la URI.
+
+La app crea/actualiza un **canal de notificación propio por regla** cuando se elige un sonido propio y ofrece un botón **«Probar sonido»** para escucharlo antes de guardar. La base de datos se migra de la versión 1 a la 2 sin borrar las reglas existentes (nuevas columnas `notificationSoundType` y `notificationSoundUri`).
+
 ## Mejoras de interfaz v1.2.0
 
 - Dashboard adaptativo con `BoxWithConstraints`: en pantallas estrechas el medidor SOC se reduce a 112 dp, las tarjetas usan igual ancho y las celdas/temperaturas se muestran en cuadrícula de 2 columnas (4 en tabletas). Etiquetas de una sola línea para evitar textos partidos.
